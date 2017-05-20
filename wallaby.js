@@ -2,7 +2,7 @@ module.exports = {
 	files: [
 		'*.js',
 		'lib/**/*.js',
-		'test/fixtures/**'
+		'test/fixtures/**/*.*'
 	],
 
 	tests: [

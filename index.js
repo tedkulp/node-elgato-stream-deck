@@ -5,7 +5,6 @@ const VENDOR_ID = 0x0fd9;
 
 // Native
 const EventEmitter = require('events');
-const emitter = new EventEmitter();
 
 // Packages
 const HID = require('node-hid');
@@ -15,11 +14,30 @@ const usbDetect = require('usb-detection');
 const StreamDeck = require('./lib/StreamDeck');
 
 const streamDeckMap = new Map();
-emitter.connectedStreamDecks = streamDeckMap;
+
+class StreamDeckOrchestrator extends EventEmitter {
+	getDevice(index) {
+		return Array.from(streamDeckMap.values())[index];
+	}
+
+	get connectedStreamDecks() {
+		return streamDeckMap;
+	}
+
+	get PRODUCT_ID() {
+		return PRODUCT_ID;
+	}
+
+	get VENDOR_ID() {
+		return VENDOR_ID;
+	}
+}
+
+const orchestrator = new StreamDeckOrchestrator();
 
 usbDetect.find(VENDOR_ID, PRODUCT_ID, err => {
 	if (err) {
-		emitter.emit('error', err);
+		orchestrator.emit('error', err);
 		return;
 	}
 
@@ -33,10 +51,6 @@ usbDetect.on(`add:${VENDOR_ID}:${PRODUCT_ID}`, () => {
 process.on('exit', () => {
 	usbDetect.stopMonitoring();
 });
-
-emitter.getDevice = function (index) {
-	return Array.from(streamDeckMap.values())[index];
-};
 
 function refreshStreamDecks() {
 	const devices = HID.devices();
@@ -55,13 +69,12 @@ function refreshStreamDecks() {
 				streamDeckMap.delete(device.path);
 			}
 
-			emitter.emit(this.event, streamDeck, ...arguments);
+			orchestrator.emit(this.event, streamDeck, ...arguments);
 		});
 
 		streamDeckMap.set(device.path, streamDeck);
-
-		emitter.emit('connect', streamDeck);
+		orchestrator.emit('connect', streamDeck);
 	});
 }
 
-module.exports = emitter;
+module.exports = orchestrator;

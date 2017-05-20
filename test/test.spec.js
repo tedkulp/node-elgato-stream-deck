@@ -1,7 +1,6 @@
 'use strict';
 
 // Native
-const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 
@@ -10,40 +9,39 @@ const mockery = require('mockery');
 const sinon = require('sinon');
 const test = require('ava');
 
-mockery.registerMock('node-hid', {
-	devices() {
-		return [{
-			vendorId: 0x0fd9,
-			productId: 0x0060,
-			path: 'foo'
-		}];
-	},
-	HID: class extends EventEmitter {
-		constructor() {
-			super();
-			this.write = sinon.spy();
-		}
-	}
-});
+// Mocked packages
+const mockUSBDetection = require('./fixtures/mock-modules/usb-detection');
+const mockNodeHID = require('./fixtures/mock-modules/node-hid');
+
+mockery.registerMock('usb-detection', mockUSBDetection);
+mockery.registerMock('node-hid', mockNodeHID);
 mockery.enable({
 	warnOnUnregistered: false
 });
 
 // Must be required after we register a mock for `node-hid`.
-const streamDeck = require('../');
+const streamDeckOrchestrator = require('../');
 
-test.afterEach(() => {
-	streamDeck.device.write.reset();
+test.cb.beforeEach(t => {
+	streamDeckOrchestrator.once('connect', device => {
+		t.context.streamDeckDevice = device;
+		t.end();
+	});
+
+	mockUSBDetection.emit(`add:${streamDeckOrchestrator.VENDOR_ID}:${streamDeckOrchestrator.PRODUCT_ID}`);
+});
+
+test.afterEach(t => {
+	t.context.streamDeckDevice = null;
 });
 
 test('fillColor', t => {
 	t.plan(2);
-
-	streamDeck.fillColor(0, 255, 0, 0);
+	t.context.streamDeckDevice.fillColor(0, 255, 0, 0);
 
 	validateWriteCall(
 		t,
-		streamDeck.device.write,
+		t.context.streamDeckDevice.device.write,
 		[
 			'fillColor-red-page1.json',
 			'fillColor-red-page2.json'
@@ -54,11 +52,11 @@ test('fillColor', t => {
 test('clearKey', t => {
 	t.plan(2);
 
-	streamDeck.clearKey(0);
+	t.context.streamDeckDevice.clearKey(0);
 
 	validateWriteCall(
 		t,
-		streamDeck.device.write,
+		t.context.streamDeckDevice.device.write,
 		[
 			'fillColor-red-page1.json',
 			'fillColor-red-page2.json'
@@ -71,18 +69,18 @@ test('clearKey', t => {
 
 test.cb('fillImageFromFile', t => {
 	t.plan(2);
-	streamDeck.fillImageFromFile(0, path.resolve(__dirname, 'fixtures', 'red_square.png'))
+	t.context.streamDeckDevice.fillImageFromFile(0, path.resolve(__dirname, 'fixtures/red_square.png'))
 	.then(() => {
 		validateWriteCall(
 			t,
-			streamDeck.device.write,
+			t.context.streamDeckDevice.device.write,
 			[
 				'fillImageFromFile-red_square-page1.json',
 				'fillImageFromFile-red_square-page2.json'
 			]
 		);
 		t.end();
-	});
+	}).catch(t.fail);
 });
 
 function validateWriteCall(t, spy, files, filter) {
@@ -100,26 +98,26 @@ test('down and up events', t => {
 	t.plan(2);
 	const downSpy = sinon.spy();
 	const upSpy = sinon.spy();
-	streamDeck.on('down', key => downSpy(key));
-	streamDeck.on('up', key => upSpy(key));
-	streamDeck.device.emit('data', Buffer.from([0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
-	streamDeck.device.emit('data', Buffer.from([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+	streamDeckOrchestrator.on('down', downSpy);
+	streamDeckOrchestrator.on('up', upSpy);
+	t.context.streamDeckDevice.device.emit('data', Buffer.from([0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
+	t.context.streamDeckDevice.device.emit('data', Buffer.from([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
 
-	t.is(downSpy.getCall(0).args[0], 0);
-	t.is(upSpy.getCall(0).args[0], 0);
+	t.deepEqual(downSpy.getCall(0).args, [t.context.streamDeckDevice, 0]);
+	t.deepEqual(upSpy.getCall(0).args, [t.context.streamDeckDevice, 0]);
 });
 
 test.cb('forwards error events from the device', t => {
-	streamDeck.on('error', () => {
+	streamDeckOrchestrator.on('error', () => {
 		t.pass();
 		t.end();
 	});
-	streamDeck.device.emit('error', new Error('Test'));
+	t.context.streamDeckDevice.device.emit('error', new Error('Test'));
 });
 
 test('fillImage undersized buffer', t => {
 	const largeBuffer = Buffer.alloc(1);
-	t.throws(() => streamDeck.fillImage(0, largeBuffer));
+	t.throws(() => t.context.streamDeckDevice.fillImage(0, largeBuffer));
 });
 
 function readFixtureJSON(fileName) {
