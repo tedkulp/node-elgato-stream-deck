@@ -13,9 +13,9 @@ If that fails (**or if you are on a Raspberry Pi**), you will need to install a 
 some of `node-elgato-stream-deck`'s dependencies from source. 
 
 * Windows
-  * Install [`windows-build-tools`](https://github.com/felixrieseberg/windows-build-tools):
+  * Install [`windows-build-tools`](https://github.com/felixrieseberg/windows-build-tools) **with all optional libraries**:
   ```bash
-  npm install --global windows-build-tools
+  npm --vcc-build-tools-parameters='[""/Full""]' install --global windows-build-tools
   ```
 * MacOS
   * Install [Xcode](https://developer.apple.com/xcode/download/), then:
@@ -66,27 +66,29 @@ some of `node-elgato-stream-deck`'s dependencies from source.
 const path = require('path');
 const streamDeck = require('elgato-stream-deck');
 
-streamDeck.on('down', keyIndex => {
+streamDeck.on('down', (device, keyIndex) => {
     console.log('key %d down', keyIndex);
 });
 
-streamDeck.on('up', keyIndex => {
+streamDeck.on('up', (device, keyIndex) => {
     console.log('key %d up', keyIndex);
 });
 
-streamDeck.on('error', error => {
+streamDeck.on('error', (device, error) => {
     console.error(error);
 });
 
-// Fill the second button from the left in the first row with an image of the GitHub logo.
-// This is asynchronous and returns a promise.
-streamDeck.fillImageFromFile(3, path.resolve(__dirname, 'github_logo.png')).then(() => {
-	console.log('Successfully wrote a GitHub logo to key 3.');
+streamDeck.on('connect', device => {
+	// Fill the second button from the left in the first row with an image of the GitHub logo.
+    // This is asynchronous and returns a promise.
+    device.fillImageFromFile(3, path.resolve(__dirname, 'github_logo.png')).then(() => {
+    	console.log('Successfully wrote a GitHub logo to key 3.');
+    });
+    
+    // Fill the first button form the left in the first row with a solid red color. This is synchronous.
+    device.fillColor(4, 255, 0, 0);
+    console.log('Successfully wrote a red square to key 4.');
 });
-
-// Fill the first button form the left in the first row with a solid red color. This is synchronous.
-streamDeck.fillColor(4, 255, 0, 0);
-console.log('Successfully wrote a red square to key 4.');
 ```
 
 #### TypeScript
@@ -94,15 +96,15 @@ console.log('Successfully wrote a red square to key 4.');
 ```typescript
 import streamDeck = require('elgato-stream-deck');
 
-streamDeck.on('down', keyIndex => {
+streamDeck.on('down', (device, keyIndex) => {
     console.log('key %d down', keyIndex);
 });
 
-streamDeck.on('up', keyIndex => {
+streamDeck.on('up', (device, keyIndex) => {
     console.log('key %d up', keyIndex);
 });
 
-streamDeck.on('error', error => {
+streamDeck.on('error', (device, error) => {
     console.error(error);
 });
 ```
@@ -111,12 +113,13 @@ streamDeck.on('error', error => {
 
 * Miltiplatform support: Windows 7-10, MacOS, Linux, and even Raspberry Pi!
 * Key `down` and key `up` events
+* `connect` and `disconnect` events
+* Multiple Stream Decks at once
 * Fill keys with images or solid RGB colors
 * Typescript support
 
 ### Planned Features
 
-* [Hotplugging](https://github.com/Lange/node-elgato-stream-deck/issues/14)
 * [Key combinations](https://github.com/Lange/node-elgato-stream-deck/issues/9)
 * Support "pages" feature from the official Elgato Stream Deck software
 * [Text labels](https://github.com/Lange/node-elgato-stream-deck/issues/6)
@@ -217,7 +220,7 @@ Fired whenever a key is pressed. `keyIndex` is the 0-14 numerical index of that 
 ##### Example
 
 ```javascript
-streamDeck.on('down', keyIndex => {
+streamDeck.on('down', (device, keyIndex) => {
     console.log('key %d down', keyIndex);
 });
 ```
@@ -229,7 +232,7 @@ Fired whenever a key is released. `keyIndex` is the 0-14 numerical index of that
 ##### Example
 
 ```javascript
-streamDeck.on('up', keyIndex => {
+streamDeck.on('up', (device, keyIndex) => {
     console.log('key %d up', keyIndex);
 });
 ```
@@ -242,7 +245,7 @@ Fired whenever an error is detected by the `node-hid` library.
 ##### Example
 
 ```javascript
-streamDeck.on('error', error => {
+streamDeck.on('error', (device, error) => {
     console.error(error);
 });
 ```

@@ -5,7 +5,8 @@
   "main": "index.js",
   "typings": "typings.d.ts",
   "dependencies": {
-    "node-hid": "^0.5.4"
+    "node-hid": "^0.5.4",
+    "usb-detection": "^1.4.0"
   },
   "devDependencies": {
     "ava": "^0.19.1",

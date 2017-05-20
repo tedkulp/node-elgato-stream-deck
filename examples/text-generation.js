@@ -9,8 +9,8 @@ const streamDeck = require('../index');
 const font = PImage.registerFont(path.resolve(__dirname, 'SourceSansPro-Regular.ttf'), 'Source Sans Pro');
 font.loadSync();
 
-streamDeck.on('down', keyIndex => {
-	const img = PImage.make(streamDeck.ICON_SIZE, streamDeck.ICON_SIZE, {fillval: 0x00000000});
+streamDeck.on('down', (device, keyIndex) => {
+	const img = PImage.make(device.ICON_SIZE, device.ICON_SIZE, {fillval: 0x00000000});
 	const ctx = img.getContext('2d');
 	ctx.setFont('Source Sans Pro', 16);
 	ctx.USE_FONT_GLYPH_CACHING = false;
@@ -41,7 +41,7 @@ streamDeck.on('down', keyIndex => {
 		// then put that PNG back into Sharp, flatten it, and render raw.
 		// Seems like a bug in Sharp that we should make a test case for and report.
 		sharp(path.resolve(__dirname, 'github_logo.png'))
-			.resize(streamDeck.ICON_SIZE)
+			.resize(device.ICON_SIZE)
 			.overlayWith(writableStreamBuffer.getContents())
 			.png()
 			.toBuffer()
@@ -49,7 +49,7 @@ streamDeck.on('down', keyIndex => {
 				return sharp(buffer).flatten().raw().toBuffer();
 			})
 			.then(buffer => {
-				return streamDeck.fillImage(keyIndex, buffer);
+				return device.fillImage(keyIndex, buffer);
 			})
 			.catch(error => {
 				console.error(error);
@@ -57,11 +57,11 @@ streamDeck.on('down', keyIndex => {
 	});
 });
 
-streamDeck.on('up', keyIndex => {
+streamDeck.on('up', (device, keyIndex) => {
 	// Clear the key when it is released.
-	streamDeck.clearKey(keyIndex);
+	device.clearKey(keyIndex);
 });
 
-streamDeck.on('error', error => {
+streamDeck.on('error', (device, error) => {
 	console.error(error);
 });
