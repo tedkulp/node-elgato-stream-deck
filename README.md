@@ -13,7 +13,9 @@ If that fails (**or if you are on a Raspberry Pi**), you will need to install a 
 some of `node-elgato-stream-deck`'s dependencies from source. 
 
 * Windows
-  * Install [`windows-build-tools`](https://github.com/felixrieseberg/windows-build-tools) **with all optional libraries**:
+  * Install [`windows-build-tools`](https://github.com/felixrieseberg/windows-build-tools) **with all optional libraries**.
+  This will download **several gigabytes** of files to your system drive/partition, so it may take a long time and use up
+  a lot of space!:
   ```bash
   npm --vcc-build-tools-parameters='[""/Full""]' install --global windows-build-tools
   ```
