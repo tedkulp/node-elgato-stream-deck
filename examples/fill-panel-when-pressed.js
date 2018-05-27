@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const StreamDeck = require('../index');
+const StreamDeck = require('../lib');
 const streamDeck = new StreamDeck();
 
 console.log('Press keys 0-7 to show the first image, and keys 8-15 to show the second image.');

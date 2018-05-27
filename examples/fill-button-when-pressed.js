@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const StreamDeck = require('../index');
+const StreamDeck = require('../lib');
 const streamDeck = new StreamDeck();
 
 streamDeck.on('down', keyIndex => {
