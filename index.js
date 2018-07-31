@@ -15,6 +15,25 @@ const NUM_TOTAL_PIXELS = NUM_FIRST_PAGE_PIXELS + NUM_SECOND_PAGE_PIXELS;
 const NUM_BUTTON_COLUMNS = 5;
 const NUM_BUTTON_ROWS = 3;
 
+const products = [
+	{
+		name: "original",
+		vendorId: 0x0fd9,
+		productId: 0x0060,
+		keys: 15
+	},
+	{
+		name: "mini",
+		vendorId: 0x0fd9,
+		productId: 0x0063,
+		keys: 6
+	}
+];
+
+function findProduct(productId) {
+	return products.find(product => product.productId === productId);
+}
+
 class StreamDeck extends EventEmitter {
 	/**
 	 * The pixel size of an icon written to the Stream Deck key.
@@ -33,19 +52,20 @@ class StreamDeck extends EventEmitter {
 	 */
 	static checkRGBValue(value) {
 		if (value < 0 || value > 255) {
-			throw new TypeError('Expected a valid color RGB value 0 - 255');
+			throw new TypeError("Expected a valid color RGB value 0 - 255");
 		}
 	}
 
 	/**
 	 * Checks a keyIndex is a valid key for a stream deck. A number between 0 and 14.
 	 *
-	 * @static
 	 * @param {number} keyIndex The keyIndex to check
 	 */
-	static checkValidKeyIndex(keyIndex) {
-		if (keyIndex < 0 || keyIndex > 14) {
-			throw new TypeError('Expected a valid keyIndex 0 - 14');
+	checkValidKeyIndex(keyIndex) {
+		if (keyIndex < 0 || keyIndex > this.product.keys) {
+			throw new TypeError(
+				`Expected a valid keyIndex 0 - ${this.product.keys}`
+			);
 		}
 	}
 
@@ -58,7 +78,10 @@ class StreamDeck extends EventEmitter {
 	 * @returns {Buffer} The Buffer padded to the length requested
 	 */
 	static padBufferToLength(buffer, padLength) {
-		return Buffer.concat([buffer, StreamDeck.createPadBuffer(padLength - buffer.length)]);
+		return Buffer.concat([
+			buffer,
+			StreamDeck.createPadBuffer(padLength - buffer.length)
+		]);
 	}
 
 	/**
@@ -88,26 +111,33 @@ class StreamDeck extends EventEmitter {
 		return array;
 	}
 
-	constructor(devicePath) {
+	constructor(devicePath, productId) {
 		super();
 
-		if (typeof devicePath === 'undefined') {
+		if (typeof devicePath === "undefined") {
 			// Device path not provided, will then select any connected device.
 			const devices = HID.devices();
 			const connectedStreamDecks = devices.filter(device => {
-				return device.vendorId === 0x0fd9 && device.productId === 0x0060;
+				return products.some(product => {
+					return (
+						device.vendorId === product.vendorId &&
+						device.productId === product.productId
+					);
+				});
 			});
 			if (!connectedStreamDecks.length) {
-				throw new Error('No Stream Decks are connected.');
+				throw new Error("No Stream Decks are connected.");
 			}
 			this.device = new HID.HID(connectedStreamDecks[0].path);
+			this.product = findProduct(connectedStreamDecks[0].productId);
 		} else {
 			this.device = new HID.HID(devicePath);
+			this.product = findProduct(productId);
 		}
 
-		this.keyState = new Array(NUM_KEYS).fill(false);
+		this.keyState = new Array(this.product.keys).fill(false);
 
-		this.device.on('data', data => {
+		this.device.on("data", data => {
 			// The first byte is a report ID, the last byte appears to be padding.
 			// We strip these out for now.
 			data = data.slice(1, data.length - 1);
@@ -226,7 +256,7 @@ class StreamDeck extends EventEmitter {
 	 * @returns {Promise<void>} Resolves when the file has been written
 	 */
 	async fillImageFromFile(keyIndex, filePath) {
-		StreamDeck.checkValidKeyIndex(keyIndex);
+		this.checkValidKeyIndex(keyIndex);
 		return sharp(filePath)
 			.flatten() // Eliminate alpha channel, if any.
 			.resize(StreamDeck.ICON_SIZE, StreamDeck.ICON_SIZE)
@@ -254,7 +284,11 @@ class StreamDeck extends EventEmitter {
 		for (let row = 0; row < NUM_BUTTON_ROWS; row++) {
 			for (let column = 0; column < NUM_BUTTON_COLUMNS; column++) {
 				buttons.push({
-					index: (row * NUM_BUTTON_COLUMNS) + NUM_BUTTON_COLUMNS - column - 1,
+					index:
+						row * NUM_BUTTON_COLUMNS +
+						NUM_BUTTON_COLUMNS -
+						column -
+						1,
 					x: column,
 					y: row
 				});
@@ -262,12 +296,15 @@ class StreamDeck extends EventEmitter {
 		}
 
 		const buttonFillPromises = buttons.map(async button => {
-			const imageBuffer = await image.extract({
-				left: button.x * ICON_SIZE,
-				top: button.y * ICON_SIZE,
-				width: ICON_SIZE,
-				height: ICON_SIZE
-			}).raw().toBuffer();
+			const imageBuffer = await image
+				.extract({
+					left: button.x * ICON_SIZE,
+					top: button.y * ICON_SIZE,
+					width: ICON_SIZE,
+					height: ICON_SIZE
+				})
+				.raw()
+				.toBuffer();
 			return this.fillImage(button.index, imageBuffer);
 		});
 
@@ -281,7 +318,7 @@ class StreamDeck extends EventEmitter {
 	 * @returns {undefined}
 	 */
 	clearKey(keyIndex) {
-		StreamDeck.checkValidKeyIndex(keyIndex);
+		this.checkValidKeyIndex(keyIndex);
 		return this.fillColor(keyIndex, 0, 0, 0);
 	}
 
@@ -291,7 +328,7 @@ class StreamDeck extends EventEmitter {
 	 * returns {undefined}
 	 */
 	clearAllKeys() {
-		for (let keyIndex = 0; keyIndex < NUM_KEYS; keyIndex++) {
+		for (let keyIndex = 0; keyIndex < this.product.keys; keyIndex++) {
 			this.clearKey(keyIndex);
 		}
 	}
@@ -308,8 +345,17 @@ class StreamDeck extends EventEmitter {
 			);
 		}
 
-		const brightnessCommandBuffer = Buffer.from([0x05, 0x55, 0xaa, 0xd1, 0x01, percentage]);
-		this.sendFeatureReport(StreamDeck.padBufferToLength(brightnessCommandBuffer, 17));
+		const brightnessCommandBuffer = Buffer.from([
+			0x05,
+			0x55,
+			0xaa,
+			0xd1,
+			0x01,
+			percentage
+		]);
+		this.sendFeatureReport(
+			StreamDeck.padBufferToLength(brightnessCommandBuffer, 17)
+		);
 	}
 
 	/**
@@ -394,7 +440,10 @@ class StreamDeck extends EventEmitter {
 			0x00
 		]);
 
-		const packet = StreamDeck.padBufferToLength(Buffer.concat([header, buffer]), PAGE_PACKET_SIZE);
+		const packet = StreamDeck.padBufferToLength(
+			Buffer.concat([header, buffer]),
+			PAGE_PACKET_SIZE
+		);
 		return this.write(packet);
 	}
 
@@ -408,11 +457,28 @@ class StreamDeck extends EventEmitter {
 	 */
 	_writePage2(keyIndex, buffer) {
 		const header = Buffer.from([
-			0x02, 0x01, 0x02, 0x00, 0x01, keyIndex + 1, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+			0x02,
+			0x01,
+			0x02,
+			0x00,
+			0x01,
+			keyIndex + 1,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00
 		]);
 
-		const packet = StreamDeck.padBufferToLength(Buffer.concat([header, buffer]), PAGE_PACKET_SIZE);
+		const packet = StreamDeck.padBufferToLength(
+			Buffer.concat([header, buffer]),
+			PAGE_PACKET_SIZE
+		);
 		return this.write(packet);
 	}
 }
