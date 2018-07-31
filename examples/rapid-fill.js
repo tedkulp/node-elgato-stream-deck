@@ -1,9 +1,9 @@
-'use strict';
+"use strict";
 
 const StreamDeck = require('../index');
 const streamDeck = new StreamDeck();
 
-streamDeck.on('error', error => {
+streamDeck.on("error", error => {
 	console.error(error);
 });
 
@@ -12,7 +12,7 @@ setInterval(() => {
 	const g = getRandomIntInclusive(0, 255);
 	const b = getRandomIntInclusive(0, 255);
 	console.log('Filling with rgb(%d, %d, %d)', r, g, b);
-	for (let i = 0; i < 15; i++) {
+	for (let i = 0; i < streamDeck.product.keys; i++) {
 		streamDeck.fillColor(i, r, g, b);
 	}
 }, 1000 / 5);

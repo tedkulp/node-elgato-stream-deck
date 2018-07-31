@@ -1,13 +1,12 @@
-'use strict';
+"use strict";
 
 // Native
-const EventEmitter = require('events');
+const EventEmitter = require("events");
 
 // Packages
-const HID = require('node-hid');
-const sharp = require('sharp');
+const HID = require("node-hid");
+const sharp = require("sharp");
 
-const NUM_KEYS = 15;
 const PAGE_PACKET_SIZE = 8191;
 const NUM_FIRST_PAGE_PIXELS = 2583;
 const NUM_SECOND_PAGE_PIXELS = 2601;
@@ -113,22 +112,22 @@ class StreamDeck extends EventEmitter {
 			// We strip these out for now.
 			data = data.slice(1, data.length - 1);
 
-			for (let i = 0; i < NUM_KEYS; i++) {
+			for (let i = 0; i < this.product.keys; i++) {
 				const keyPressed = Boolean(data[i]);
 				const stateChanged = keyPressed !== this.keyState[i];
 				if (stateChanged) {
 					this.keyState[i] = keyPressed;
 					if (keyPressed) {
-						this.emit('down', i);
+						this.emit("down", i);
 					} else {
-						this.emit('up', i);
+						this.emit("up", i);
 					}
 				}
 			}
 		});
 
-		this.device.on('error', err => {
-			this.emit('error', err);
+		this.device.on("error", err => {
+			this.emit("error", err);
 		});
 	}
 
@@ -149,7 +148,9 @@ class StreamDeck extends EventEmitter {
 	 * @returns undefined
 	 */
 	sendFeatureReport(buffer) {
-		return this.device.sendFeatureReport(StreamDeck.bufferToIntArray(buffer));
+		return this.device.sendFeatureReport(
+			StreamDeck.bufferToIntArray(buffer)
+		);
 	}
 
 	/**
@@ -161,15 +162,21 @@ class StreamDeck extends EventEmitter {
 	 * @param {number} b The color's blue value. 0 -255
 	 */
 	fillColor(keyIndex, r, g, b) {
-		StreamDeck.checkValidKeyIndex(keyIndex);
+		this.checkValidKeyIndex(keyIndex);
 
 		StreamDeck.checkRGBValue(r);
 		StreamDeck.checkRGBValue(g);
 		StreamDeck.checkRGBValue(b);
 
 		const pixel = Buffer.from([b, g, r]);
-		this._writePage1(keyIndex, Buffer.alloc(NUM_FIRST_PAGE_PIXELS * 3, pixel));
-		this._writePage2(keyIndex, Buffer.alloc(NUM_SECOND_PAGE_PIXELS * 3, pixel));
+		this._writePage1(
+			keyIndex,
+			Buffer.alloc(NUM_FIRST_PAGE_PIXELS * 3, pixel)
+		);
+		this._writePage2(
+			keyIndex,
+			Buffer.alloc(NUM_SECOND_PAGE_PIXELS * 3, pixel)
+		);
 	}
 
 	/**
@@ -179,17 +186,21 @@ class StreamDeck extends EventEmitter {
 	 * @param {Buffer} imageBuffer
 	 */
 	fillImage(keyIndex, imageBuffer) {
-		StreamDeck.checkValidKeyIndex(keyIndex);
+		this.checkValidKeyIndex(keyIndex);
 
 		if (imageBuffer.length !== 15552) {
-			throw new RangeError(`Expected image buffer of length 15552, got length ${imageBuffer.length}`);
+			throw new RangeError(
+				`Expected image buffer of length 15552, got length ${
+					imageBuffer.length
+				}`
+			);
 		}
 
 		let pixels = [];
 		for (let r = 0; r < ICON_SIZE; r++) {
 			const row = [];
 			const start = r * 3 * ICON_SIZE;
-			for (let i = start; i < start + (ICON_SIZE * 3); i += 3) {
+			for (let i = start; i < start + ICON_SIZE * 3; i += 3) {
 				const r = imageBuffer.readUInt8(i);
 				const g = imageBuffer.readUInt8(i + 1);
 				const b = imageBuffer.readUInt8(i + 2);
@@ -199,7 +210,10 @@ class StreamDeck extends EventEmitter {
 		}
 
 		const firstPagePixels = pixels.slice(0, NUM_FIRST_PAGE_PIXELS * 3);
-		const secondPagePixels = pixels.slice(NUM_FIRST_PAGE_PIXELS * 3, NUM_TOTAL_PIXELS * 3);
+		const secondPagePixels = pixels.slice(
+			NUM_FIRST_PAGE_PIXELS * 3,
+			NUM_TOTAL_PIXELS * 3
+		);
 		this._writePage1(keyIndex, Buffer.from(firstPagePixels));
 		this._writePage2(keyIndex, Buffer.from(secondPagePixels));
 	}
@@ -289,7 +303,9 @@ class StreamDeck extends EventEmitter {
 	 */
 	setBrightness(percentage) {
 		if (percentage < 0 || percentage > 100) {
-			throw new RangeError('Expected brightness percentage to be between 0 and 100');
+			throw new RangeError(
+				"Expected brightness percentage to be between 0 and 100"
+			);
 		}
 
 		const brightnessCommandBuffer = Buffer.from([0x05, 0x55, 0xaa, 0xd1, 0x01, percentage]);
@@ -306,15 +322,76 @@ class StreamDeck extends EventEmitter {
 	 */
 	_writePage1(keyIndex, buffer) {
 		const header = Buffer.from([
-			0x02, 0x01, 0x01, 0x00, 0x00, keyIndex + 1, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x42, 0x4d, 0xf6, 0x3c, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x36, 0x00, 0x00, 0x00, 0x28, 0x00,
-			0x00, 0x00, 0x48, 0x00, 0x00, 0x00, 0x48, 0x00,
-			0x00, 0x00, 0x01, 0x00, 0x18, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0xc0, 0x3c, 0x00, 0x00, 0xc4, 0x0e,
-			0x00, 0x00, 0xc4, 0x0e, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+			0x02,
+			0x01,
+			0x01,
+			0x00,
+			0x00,
+			keyIndex + 1,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x42,
+			0x4d,
+			0xf6,
+			0x3c,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x36,
+			0x00,
+			0x00,
+			0x00,
+			0x28,
+			0x00,
+			0x00,
+			0x00,
+			0x48,
+			0x00,
+			0x00,
+			0x00,
+			0x48,
+			0x00,
+			0x00,
+			0x00,
+			0x01,
+			0x00,
+			0x18,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0xc0,
+			0x3c,
+			0x00,
+			0x00,
+			0xc4,
+			0x0e,
+			0x00,
+			0x00,
+			0xc4,
+			0x0e,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00,
+			0x00
 		]);
 
 		const packet = StreamDeck.padBufferToLength(Buffer.concat([header, buffer]), PAGE_PACKET_SIZE);
