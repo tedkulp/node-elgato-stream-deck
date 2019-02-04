@@ -211,7 +211,7 @@ The buffer must be exactly 15552 bytes in length. Any other length will result i
 
 ```javascript
 // Fill the third button from the left in the first row with an image of the GitHub logo.
-const sharp = require('sharp-electron'); // See http://sharp.dimens.io/en/stable/ for full docs on this great library!
+const sharp = require('electron-sharp'); // See http://sharp.dimens.io/en/stable/ for full docs on this great library!
 sharp(path.resolve(__dirname, 'github_logo.png'))
 	.flatten() // Eliminate alpha channel, if any.
 	.resize(streamDeck.ICON_SIZE, streamDeck.ICON_SIZE) // Scale up/down to the right size, cropping if necessary.
