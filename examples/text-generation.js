@@ -1,6 +1,6 @@
 'use strict';
 
-const sharp = require('sharp');
+const sharp = require('electron-sharp');
 const path = require('path');
 const PImage = require('pureimage');
 const streamBuffers = require('stream-buffers');

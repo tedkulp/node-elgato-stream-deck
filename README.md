@@ -21,7 +21,7 @@ However, in the event that installation _does_ fail (**or if you are on a platfo
 
 <details>
 	<summary>Compiling dependencies from source</summary>
-	
+
 * Windows
   * Install [`windows-build-tools`](https://github.com/felixrieseberg/windows-build-tools):
   ```bash
@@ -42,7 +42,7 @@ However, in the event that installation _does_ fail (**or if you are on a platfo
   * Install a recent version of Node.js.:
 	```bash
 	curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-	sudo apt-get install -y nodejs 
+	sudo apt-get install -y nodejs
 	```
   * Try installing `node-elgato-stream-deck`
   * If you still have issues, ensure everything is updated and try again:
@@ -211,7 +211,7 @@ The buffer must be exactly 15552 bytes in length. Any other length will result i
 
 ```javascript
 // Fill the third button from the left in the first row with an image of the GitHub logo.
-const sharp = require('sharp'); // See http://sharp.dimens.io/en/stable/ for full docs on this great library!
+const sharp = require('sharp-electron'); // See http://sharp.dimens.io/en/stable/ for full docs on this great library!
 sharp(path.resolve(__dirname, 'github_logo.png'))
 	.flatten() // Eliminate alpha channel, if any.
 	.resize(streamDeck.ICON_SIZE, streamDeck.ICON_SIZE) // Scale up/down to the right size, cropping if necessary.

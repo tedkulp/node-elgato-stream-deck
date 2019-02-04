@@ -5,7 +5,7 @@ const EventEmitter = require('events');
 
 // Packages
 const HID = require('node-hid');
-const sharp = require('sharp');
+const sharp = require('sharp-electron');
 
 const NUM_KEYS = 15;
 const PAGE_PACKET_SIZE = 8191;
