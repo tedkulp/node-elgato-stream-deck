@@ -6,7 +6,7 @@
   "typings": "typings.d.ts",
   "dependencies": {
     "node-hid": "^0.7.6",
-    "sharp": "^0.21.3"
+    "electron-sharp": "^0.20.8"
   },
   "devDependencies": {
     "ava": "^0.23.0",
